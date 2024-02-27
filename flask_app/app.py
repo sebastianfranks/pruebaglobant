@@ -2,7 +2,7 @@ from flask import Flask, jsonify
 from datetime import datetime
 from models import Department, Job, HiredEmployee
 from database import db
-from sqlalchemy import func
+from sqlalchemy import func, case, extract
 
 app = Flask(__name__)
 
@@ -82,7 +82,30 @@ def employees_hired_2021():
     metrics = db.session.query(
         Department.department,
         Job.job,
-        func.count(func.distinct(HiredEmployee.id)).label('total_hired')
+        func.sum(
+            case(
+                (extract('quarter', HiredEmployee.datetime) == 1, 1),
+                else_=0
+            )
+        ).label('Q1'),
+        func.sum(
+            case(
+                (extract('quarter', HiredEmployee.datetime) == 2, 1),
+                else_=0
+            )
+        ).label('Q2'),
+        func.sum(
+            case(
+                (extract('quarter', HiredEmployee.datetime) == 3, 1),
+                else_=0
+            )
+        ).label('Q3'),
+        func.sum(
+            case(
+                (extract('quarter', HiredEmployee.datetime) == 4, 1),
+                else_=0
+            )
+        ).label('Q4')
     ).join(
         HiredEmployee, Department.id == HiredEmployee.department_id
     ).join(
@@ -101,7 +124,10 @@ def employees_hired_2021():
         formatted_metrics.append({
             'department': metric[0],
             'job': metric[1],
-            'total_hired': metric[2]
+            'Q1': metric[2],
+            'Q2': metric[3],
+            'Q3': metric[4],
+            'Q4': metric[5]
         })
 
     # Devolver los resultados en formato JSON
